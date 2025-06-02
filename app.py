@@ -1,15 +1,38 @@
 # app.py
 import streamlit as st
-#from agents import agent_a, agent_b, generate_followups, generate_summary, ingest_pdf_and_query
+import os
 from agents import agent_a, agent_b, generate_followups, generate_summary, embed_and_chunk_pdf
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 
+# ---- Authentication Section ----
+def login():
+    st.title("🔐 Secure Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if username == os.getenv("APP_USERNAME") and password == os.getenv("APP_PASSWORD"):
+            st.session_state.authenticated = True
+            st.success("Login successful!")
+            st.rerun()
+        else:
+            st.error("Invalid credentials. Please try again.")
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    login()
+    st.stop()
+
+# ---- Main App After Authentication ----
 st.set_page_config(page_title="Agentic Chat", layout="wide")
 st.title("🤖 Agentic AI: Dual-Agent Smart Conversation with RAG")
 
-# Initialize session state
+# Session state initialization
 if "history" not in st.session_state:
     st.session_state.history = []
     st.session_state.turn = 0
@@ -33,8 +56,6 @@ col1, col2, col3 = st.columns([2, 3, 2])
 
 with col2:
     st.header("Conversation Control")
-
-    # Persona selection
     personas = ["", "Patient", "Doctor", "Teacher", "Engineer", "Student"]
     st.session_state.agent_a_persona = st.selectbox("Select Agent A Persona", personas, index=0)
     st.session_state.agent_b_persona = st.selectbox("Select Agent B Persona", personas, index=0)
@@ -53,7 +74,6 @@ with col2:
 
     max_turns = st.slider("Conversation Depth (Turns)", 1, 10, 3)
 
-# Display history
 with col1:
     st.header("🧠 Agent A")
     for speaker, msg in st.session_state.history:
@@ -110,9 +130,6 @@ with col2:
         st.markdown(st.session_state.long_summary)
 
     if st.session_state.short_summary or st.session_state.long_summary:
-        from reportlab.platypus import SimpleDocTemplate, Paragraph
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.platypus import Spacer
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter)
         styles = getSampleStyleSheet()
