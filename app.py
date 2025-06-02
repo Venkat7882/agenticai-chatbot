@@ -56,9 +56,8 @@ col1, col2, col3 = st.columns([2, 3, 2])
 
 with col2:
     st.header("Conversation Control")
-    personas = ["", "Patient", "Doctor", "Teacher", "Engineer", "Student"]
-    st.session_state.agent_a_persona = st.selectbox("Select Agent A Persona", personas, index=0)
-    st.session_state.agent_b_persona = st.selectbox("Select Agent B Persona", personas, index=0)
+    st.session_state.agent_a_persona = st.text_input("Enter Agent A Persona", st.session_state.agent_a_persona)
+    st.session_state.agent_b_persona = st.text_input("Enter Agent B Persona", st.session_state.agent_b_persona)
 
     user_query = st.text_input("Start the conversation (Agent A)", "What are the differences between AI and human intelligence?")
     if st.button("Start Conversation"):
@@ -105,10 +104,22 @@ with col2:
             st.session_state.selected_followup = followup_list[0]
 
     if st.session_state.followup_options:
-        selected = st.radio("Choose Agent A's follow-up question:", st.session_state.followup_options)
+        user_followup = st.text_input("Or type your own follow-up question")
+        selected = st.radio("Choose one suggested question to ask:", st.session_state.followup_options)
+
         if st.button("Ask Agent B"):
             persona_prefix = f"As a persona \"{st.session_state.agent_a_persona}\", I would like to ask: " if st.session_state.agent_a_persona else ""
             full_query = f"{persona_prefix}{selected}\n\nContext:\n{st.session_state.pdf_text}" if st.session_state.pdf_text else persona_prefix + selected
+            st.session_state.history.append(("Agent A", full_query))
+            b_response = agent_b.ask(full_query)
+            if st.session_state.agent_b_persona:
+                b_response = f"As a persona \"{st.session_state.agent_b_persona}\", I would like to respond: {b_response}"
+            st.session_state.history.append(("Agent B", b_response))
+            st.session_state.turn += 1
+
+        if user_followup and st.button("Ask Agent B - custom q"):
+            persona_prefix = f"As a persona \"{st.session_state.agent_a_persona}\", I would like to ask: " if st.session_state.agent_a_persona else ""
+            full_query = f"{persona_prefix}{user_followup}\n\nContext:\n{st.session_state.pdf_text}" if st.session_state.pdf_text else persona_prefix + user_followup
             st.session_state.history.append(("Agent A", full_query))
             b_response = agent_b.ask(full_query)
             if st.session_state.agent_b_persona:
